@@ -90,8 +90,12 @@ The dashboard asks: what if managing your life felt like commanding a space-fari
 - Firefox 88+
 - Safari 14+
 - Edge 90+
-
-https://ava-ak369.github.io/Emporium-Citadel/Emporium_genesis.html
+- 
+<p align="center">
+  <img src="emporium_dashboard_thumbnail.png" alt="Emporium Command Dashboard" width="100%"/>
+  <br>
+  <em>The Emporium Command centre — 10 zones, live diagnostics, and the Founder avatar.</em>
+</p>
 
 Requires support for CSS custom properties, CSS Grid, and backdrop-filter.
 
