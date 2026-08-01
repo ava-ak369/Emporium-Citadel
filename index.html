@@ -3,13 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Emporium Command — Full City Map</title>
+  <title>Emporium Command — Genesis</title>
   <style>
     :root {
       --bg: #05060a;
       --panel-bg: #11131a;
       --accent: #4fd1c5;
-      --accent-soft: #2d3748;
       --danger: #e53e3e;
       --text-main: #e2e8f0;
       --text-muted: #a0aec0;
@@ -26,19 +25,116 @@
     }
     #app { min-height: 100vh; position: relative; }
 
+    /* INTRO CINEMATIC */
+    #intro-scene {
+      position: fixed; inset: 0; z-index: 9999;
+      background: #000; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; overflow: hidden;
+      transition: opacity 2s ease, visibility 2s ease;
+    }
+    #intro-scene.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+
+    .intro-void {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 50% 50%, #0a0a1a 0%, #000 60%);
+    }
+
+    .intro-star {
+      position: absolute; background: #fff; border-radius: 50%;
+      opacity: 0; animation: starBirth 4s ease-out forwards;
+    }
+    @keyframes starBirth { 0%{opacity:0; transform:scale(0);} 100%{opacity:0.6; transform:scale(1);} }
+
+    .intro-line {
+      position: relative; z-index: 10;
+      font-size: 1.1rem; letter-spacing: 0.15em;
+      color: rgba(226,232,240,0.85); text-align: center;
+      max-width: 720px; padding: 0 24px; line-height: 1.8;
+      opacity: 0; filter: blur(8px);
+      transition: all 1.8s cubic-bezier(0.22, 1, 0.36, 1);
+      margin-bottom: 8px; text-shadow: 0 0 30px rgba(125,211,252,0.15);
+    }
+    .intro-line.visible { opacity: 1; filter: blur(0px); }
+    .intro-line.glow { text-shadow: 0 0 40px rgba(244,114,182,0.4), 0 0 80px rgba(244,114,182,0.15); color: #fce7f3; }
+    .intro-line.chaos { color: #e53e3e; text-shadow: 0 0 30px rgba(229,62,62,0.3); }
+    .intro-line.coherence { color: #4fd1c5; text-shadow: 0 0 30px rgba(79,209,197,0.3); }
+
+    #intro-poof {
+      position: absolute; inset: 0; z-index: 8;
+      background: radial-gradient(circle at 50% 50%, #fff 0%, #fce7f3 20%, #f472b6 40%, transparent 70%);
+      opacity: 0; transform: scale(0.2);
+      transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+      pointer-events: none;
+    }
+    #intro-poof.bang { opacity: 0.35; transform: scale(2.5); }
+    #intro-poof.fade { opacity: 0; transition: opacity 2s ease; }
+
+    .intro-squad-wrap {
+      position: relative; z-index: 10; margin-top: 24px;
+      opacity: 0; transform: translateY(30px) scale(0.95);
+      transition: all 1.5s cubic-bezier(0.22, 1, 0.36, 1);
+      display: flex; flex-direction: column; align-items: center; gap: 20px;
+    }
+    .intro-squad-wrap.visible { opacity: 1; transform: translateY(0) scale(1); }
+
+    .intro-squad-img {
+      width: 520px; max-width: 90vw; border-radius: 16px;
+      border: 1px solid rgba(244,114,182,0.25);
+      box-shadow: 0 0 60px rgba(244,114,182,0.15), 0 20px 60px rgba(0,0,0,0.6);
+      animation: squadPulse 4s ease-in-out infinite;
+    }
+    @keyframes squadPulse { 0%,100%{box-shadow:0 0 60px rgba(244,114,182,0.15),0 20px 60px rgba(0,0,0,0.6);} 50%{box-shadow:0 0 90px rgba(244,114,182,0.25),0 20px 60px rgba(0,0,0,0.6);} }
+
+    .intro-enter-btn {
+      position: relative; z-index: 10;
+      padding: 16px 48px; border-radius: 999px; border: 1px solid rgba(79,209,197,0.4);
+      background: linear-gradient(135deg, rgba(79,209,197,0.12), rgba(49,151,149,0.08));
+      color: var(--accent); font-size: 13px; font-weight: 700;
+      letter-spacing: 0.2em; text-transform: uppercase; cursor: pointer;
+      transition: all 0.4s ease; opacity: 0; transform: translateY(20px);
+      box-shadow: 0 0 30px rgba(79,209,197,0.1);
+    }
+    .intro-enter-btn.visible { opacity: 1; transform: translateY(0); }
+    .intro-enter-btn:hover {
+      background: linear-gradient(135deg, rgba(79,209,197,0.25), rgba(49,151,149,0.15));
+      box-shadow: 0 0 50px rgba(79,209,197,0.25); transform: translateY(-2px);
+    }
+
+    .intro-skip {
+      position: absolute; bottom: 20px; right: 24px; z-index: 20;
+      font-size: 11px; color: rgba(160,174,192,0.4); letter-spacing: 0.1em;
+      text-transform: uppercase; cursor: pointer; background: none; border: none;
+      transition: color 0.3s;
+    }
+    .intro-skip:hover { color: rgba(160,174,192,0.8); }
+
+    .entropy-particle {
+      position: absolute; width: 3px; height: 3px; border-radius: 50%;
+      background: #e53e3e; opacity: 0; pointer-events: none;
+      animation: entropyFloat 6s ease-in-out infinite;
+    }
+    @keyframes entropyFloat {
+      0%{opacity:0; transform:translate(0,0) scale(0);}
+      20%{opacity:0.6;}
+      80%{opacity:0.6;}
+      100%{opacity:0; transform:translate(var(--tx), var(--ty)) scale(1.5);}
+    }
+
+    /* MAIN DASHBOARD */
+    #main-dashboard {
+      opacity: 0; transition: opacity 1.5s ease;
+      background: radial-gradient(circle at top, #1a202c 0, #05060a 55%, #000 100%);
+      color: var(--text-main); min-height: 100vh; overflow: hidden;
+    }
+    #main-dashboard.revealed { opacity: 1; }
+
     .star { position: absolute; background: #fff; border-radius: 50%; opacity: 0.5; animation: twinkle 3s ease-in-out infinite; pointer-events: none; }
     @keyframes twinkle { 0%,100%{opacity:0.2;} 50%{opacity:0.8;} }
     .nebula { position: absolute; border-radius: 50%; filter: blur(50px); opacity: 0.18; pointer-events: none; }
     .vortex-ring { position: absolute; border-radius: 50%; border: 1px solid rgba(244,114,182,0.06); pointer-events: none; animation: spin 25s linear infinite; }
     @keyframes spin { from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
 
-    .map-zone {
-      position: absolute; width: 11%; height: 15%; transform: translate(-50%, -50%);
-      border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
-      padding-bottom: 8px; cursor: pointer; transition: all 0.3s ease; border: 1px solid;
-      background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.01) 100%);
-      z-index: 10; overflow: hidden;
-    }
+    .map-zone { position: absolute; width: 11%; height: 15%; transform: translate(-50%, -50%); border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 8px; cursor: pointer; transition: all 0.3s ease; border: 1px solid; background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.01) 100%); z-index: 10; overflow: hidden; }
     .map-zone:hover { filter: brightness(1.3); transform: translate(-50%, -50%) scale(1.08); z-index: 11; }
     .map-zone.active { box-shadow: 0 0 25px currentColor, 0 0 50px currentColor; background: linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.04) 100%); }
     .map-zone.hub-zone { width: 13%; height: 18%; z-index: 12; }
@@ -49,12 +145,7 @@
     .conduit-line { stroke-width: 1.5; stroke-dasharray: 4 4; animation: flow 3s linear infinite; opacity: 0.35; }
     @keyframes flow { 0%{stroke-dashoffset:24;} 100%{stroke-dashoffset:0;} }
 
-    #founder-avatar {
-      position: absolute; width: 32px; height: 32px; border-radius: 50%;
-      background: radial-gradient(circle at 30% 30%, #ffffff 0%, #fce7f3 30%, #f472b6 100%);
-      border: 2.5px solid #fff; box-shadow: 0 0 25px #f472b6, 0 0 50px rgba(244,114,182,0.25), inset 0 0 8px rgba(255,255,255,0.3);
-      z-index: 20; transition: all 0.7s cubic-bezier(0.34, 1.56, 0.64, 1); cursor: pointer; transform: translate(-50%, -50%);
-    }
+    #founder-avatar { position: absolute; width: 32px; height: 32px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #ffffff 0%, #fce7f3 30%, #f472b6 100%); border: 2.5px solid #fff; box-shadow: 0 0 25px #f472b6, 0 0 50px rgba(244,114,182,0.25), inset 0 0 8px rgba(255,255,255,0.3); z-index: 20; transition: all 0.7s cubic-bezier(0.34, 1.56, 0.64, 1); cursor: pointer; transform: translate(-50%, -50%); }
     #founder-avatar::before { content: ''; position: absolute; inset: -10px; border-radius: 50%; border: 1.5px solid rgba(244,114,182,0.25); animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite; }
     #founder-avatar::after { content: ''; position: absolute; inset: -18px; border-radius: 50%; border: 0.5px solid rgba(244,114,182,0.1); animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite 0.5s; }
     @keyframes ping { 0%{transform:scale(1);opacity:0.6;} 75%,100%{transform:scale(1.6);opacity:0;} }
@@ -148,121 +239,255 @@
     @media (max-width: 1100px) { .main-grid { grid-template-columns: 260px 1fr 260px; } }
     @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; height: auto; } .zone-list { max-height: 300px; } .map-panel { min-height: 500px; } }
   </style>
+<base target="_blank">
 </head>
 <body>
-  <div id="app">
-    <div class="top-bar-wrap">
-      <div class="top-bar">
-        <div class="brand-block">
-          <div class="brand-title">EMPORIUM COMMAND</div>
-          <div class="brand-sub">10 Zone Network — Inclusive City Protocol Active</div>
-        </div>
-        <div class="status-block">
-          <div class="status-pill">
-            <div class="status-dot" id="suit-dot"></div>
-            <div class="status-label">Network clearance</div>
-            <div class="status-value" id="network-status">UNSTABLE</div>
-          </div>
-          <div class="hint-text">Full city topology — PICT-ITD diagnostic live.</div>
-        </div>
-      </div>
-      <div class="alert-banner" id="alert-banner">
-        <div class="alert-left">
-          <div class="alert-icon">!</div>
-          <div>
-            <div class="alert-main" id="alert-main">Suit flashing red — critical zone detected</div>
-            <div class="alert-sub" id="alert-sub">Founder circlet resonance critical. Immediate intervention required.</div>
-          </div>
-        </div>
-        <div class="alert-tag" id="alert-tag">Network critical</div>
-      </div>
+
+  <!-- INTRO CINEMATIC -->
+  <div id="intro-scene">
+    <div class="intro-void" id="intro-void"></div>
+    <div id="intro-poof"></div>
+
+    <div class="intro-line" id="line1">In the beginning, there was oblivion</div>
+    <div class="intro-line" id="line2">The walls of time that spanned with entropy</div>
+    <div class="intro-line" id="line3">Then, there was depth</div>
+    <div class="intro-line" id="line4">The depth of one imperfect straight line</div>
+    <div class="intro-line" id="line5">After that was length and width at the same time</div>
+    <div class="intro-line glow" id="line6">then <em>poof</em> a moment somehow spawned</div>
+    <div class="intro-line" id="line7">Through the cloak of oblivion, reality then spawned</div>
+    <div class="intro-line chaos" id="line8">However, there was unseen energy also spawning throughout the galaxy</div>
+    <div class="intro-line chaos" id="line9">the exponent of entropy</div>
+    <div class="intro-line coherence" id="line10">The coherence field gradually spread, exponentially too, just like chaos</div>
+    <div class="intro-line coherence" id="line11">The coherence must be preserved to save the galaxy,</div>
+    <div class="intro-line coherence" id="line12">to become a spacefaring civilisation</div>
+    <div class="intro-line glow" id="line13">The only one standing in the way is you</div>
+
+    <div class="intro-squad-wrap" id="intro-squad">
+      <img src="squadren_anime.png" alt="The Squad" class="intro-squad-img" id="squad-img" onerror="this.style.display='none'">
+      <button class="intro-enter-btn" id="enter-btn" onclick="enterEmporium()">Enter the Emporium</button>
     </div>
 
-    <div class="main-grid">
-      <div class="zone-list" id="zone-list"></div>
+    <button class="intro-skip" onclick="enterEmporium()">Skip Intro ↵</button>
+  </div>
 
-      <div class="map-panel">
-        <div class="map-header">
-          <span>Topology Map</span>
-          <span>Founder position: <strong id="founder-pos-label">THE HUB</strong></span>
+  <!-- MAIN DASHBOARD -->
+  <div id="main-dashboard">
+    <div id="app">
+      <div class="top-bar-wrap">
+        <div class="top-bar">
+          <div class="brand-block">
+            <div class="brand-title">EMPORIUM COMMAND</div>
+            <div class="brand-sub">10 Zone Network — Inclusive City Protocol Active</div>
+          </div>
+          <div class="status-block">
+            <div class="status-pill">
+              <div class="status-dot" id="suit-dot"></div>
+              <div class="status-label">Network clearance</div>
+              <div class="status-value" id="network-status">UNSTABLE</div>
+            </div>
+            <div class="hint-text">Full city topology — PICT-ITD diagnostic live.</div>
+          </div>
         </div>
-        <div class="map-area" id="map-area">
-          <div id="stars" style="position:absolute;inset:0;pointer-events:none;z-index:1;"></div>
-          <div class="nebula" style="width:160px;height:160px;left:6%;top:12%;background:#d4a843;"></div>
-          <div class="nebula" style="width:140px;height:140px;right:6%;top:14%;background:#7dd3fc;"></div>
-          <div class="nebula" style="width:120px;height:120px;left:42%;top:28%;background:#f472b6;"></div>
-          <div class="nebula" style="width:100px;height:100px;left:22%;top:72%;background:#68d391;"></div>
-          <div class="nebula" style="width:110px;height:110px;right:18%;top:68%;background:#f6ad55;"></div>
-          <div class="vortex-ring" style="width:90px;height:90px;left:44%;top:42%;"></div>
-          <div class="vortex-ring" style="width:130px;height:130px;left:41%;top:38%;animation-duration:35s;animation-direction:reverse;"></div>
-          <svg class="conduit-svg" id="conduits"></svg>
-          <div id="map-zones"></div>
-          <div id="founder-avatar" style="left:50%;top:50%;"></div>
-          <div class="mini-legend">
-            <div class="legend-item"><div class="legend-dot" style="background:#f472b6;"></div>Founder</div>
+        <div class="alert-banner" id="alert-banner">
+          <div class="alert-left">
+            <div class="alert-icon">!</div>
+            <div>
+              <div class="alert-main" id="alert-main">Suit flashing red — critical zone detected</div>
+              <div class="alert-sub" id="alert-sub">Founder circlet resonance critical. Immediate intervention required.</div>
+            </div>
           </div>
-          <div class="diag-bar">
-            <span class="diag-label">Diagnostic</span>
-            <span class="diag-value" id="diagValue">Running real inference...</span>
+          <div class="alert-tag" id="alert-tag">Network critical</div>
+        </div>
+      </div>
+
+      <div class="main-grid">
+        <div class="zone-list" id="zone-list"></div>
+
+        <div class="map-panel">
+          <div class="map-header">
+            <span>Topology Map</span>
+            <span>Founder position: <strong id="founder-pos-label">THE HUB</strong></span>
           </div>
-          <div class="field-bar">
-            <span class="field-label" id="field-label" style="color:#f472b6;">Field Density</span>
-            <div class="field-track"><div class="field-fill" id="fFill" style="width:62%;"></div></div>
-            <span class="field-num" id="fNum" style="color:#f472b6;">62%</span>
+          <div class="map-area" id="map-area">
+            <div id="stars" style="position:absolute;inset:0;pointer-events:none;z-index:1;"></div>
+            <div class="nebula" style="width:160px;height:160px;left:6%;top:12%;background:#d4a843;"></div>
+            <div class="nebula" style="width:140px;height:140px;right:6%;top:14%;background:#7dd3fc;"></div>
+            <div class="nebula" style="width:120px;height:120px;left:42%;top:28%;background:#f472b6;"></div>
+            <div class="nebula" style="width:100px;height:100px;left:22%;top:72%;background:#68d391;"></div>
+            <div class="nebula" style="width:110px;height:110px;right:18%;top:68%;background:#f6ad55;"></div>
+            <div class="vortex-ring" style="width:90px;height:90px;left:44%;top:42%;"></div>
+            <div class="vortex-ring" style="width:130px;height:130px;left:41%;top:38%;animation-duration:35s;animation-direction:reverse;"></div>
+            <svg class="conduit-svg" id="conduits"></svg>
+            <div id="map-zones"></div>
+
+
+
+
+
+
+<div id="founder-avatar" style="left:50%;top:50%;"></div>
+            <div class="diag-bar">
+              <span class="diag-label">Diagnostic</span>
+              <span class="diag-value" id="diagValue">Running real inference...</span>
+            </div>
+            <div class="field-bar">
+              <span class="field-label" id="field-label" style="color:#f472b6;">Field Density</span>
+              <div class="field-track"><div class="field-fill" id="fFill" style="width:62%;"></div></div>
+              <span class="field-num" id="fNum" style="color:#f472b6;">62%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="right-panel">
+          <div class="panel-card" style="flex:1; display:flex; flex-direction:column;">
+            <div class="panel-title">◈ JARVIS DIRECTIVE</div>
+            <div class="jarvis-content" id="jarvis-output">
+              <p style="color:var(--text-main);">Founder detected. Full city scan complete. Ten zones mapped. Multiple instability signatures detected across the Emporium.</p>
+              <p style="margin-top:12px; font-style:italic;">Awaiting your stance to initiate stabilization protocols.</p>
+            </div>
+          </div>
+          <div class="mission-controls" id="mission-controls">
+            <button class="btn-primary" onclick="acceptMission()">Accept Mission</button>
+            <div style="display:flex; gap:8px;">
+              <button class="btn-secondary" onclick="escalateMission()">Escalate</button>
+              <button class="btn-ghost" onclick="dismissMission()">Dismiss</button>
+            </div>
+          </div>
+          <div class="panel-card log-card">
+            <div class="log-title">Mission Log</div>
+            <div id="mission-log"></div>
           </div>
         </div>
       </div>
 
-      <div class="right-panel">
-        <div class="panel-card" style="flex:1; display:flex; flex-direction:column;">
-          <div class="panel-title">◈ JARVIS DIRECTIVE</div>
-          <div class="jarvis-content" id="jarvis-output">
-            <p style="color:var(--text-main);">Founder detected. Full city scan complete. Ten zones mapped. Multiple instability signatures detected across the Emporium.</p>
-            <p style="margin-top:12px; font-style:italic;">Awaiting your stance to initiate stabilization protocols.</p>
-          </div>
+      <div class="bottom-bar">
+        <div><span class="label">Network Coherence: </span><span class="status" id="coherence-text" style="color:var(--danger);">UNSTABLE</span></div>
+        <div><span class="label">Active Zones: </span><span class="value">10</span></div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span class="status" id="bottom-status" style="color:var(--danger);">Critical</span>
+          <span style="width:20px; height:20px; border-radius:50%; background:rgba(229,62,62,0.15); display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--danger);">↓</span>
         </div>
-        <div class="mission-controls" id="mission-controls">
-          <button class="btn-primary" onclick="acceptMission()">Accept Mission</button>
-          <div style="display:flex; gap:8px;">
-            <button class="btn-secondary" onclick="escalateMission()">Escalate</button>
-            <button class="btn-ghost" onclick="dismissMission()">Dismiss</button>
-          </div>
-        </div>
-        <div class="panel-card log-card">
-          <div class="log-title">Mission Log</div>
-          <div id="mission-log"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="bottom-bar">
-      <div><span class="label">Network Coherence: </span><span class="status" id="coherence-text" style="color:var(--danger);">UNSTABLE</span></div>
-      <div><span class="label">Active Zones: </span><span class="value">10</span></div>
-      <div style="display:flex; align-items:center; gap:6px;">
-        <span class="status" id="bottom-status" style="color:var(--danger);">Critical</span>
-        <span style="width:20px; height:20px; border-radius:50%; background:rgba(229,62,62,0.15); display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--danger);">↓</span>
       </div>
     </div>
   </div>
 <script>
+/* ════════════════════════════════════════
+   INTRO CINEMATIC LOGIC
+   ════════════════════════════════════════ */
+const lines = [
+  { id: 'line1', delay: 800 },
+  { id: 'line2', delay: 3200 },
+  { id: 'line3', delay: 6200 },
+  { id: 'line4', delay: 8800 },
+  { id: 'line5', delay: 11800 },
+  { id: 'line6', delay: 14800 },
+  { id: 'line7', delay: 18800 },
+  { id: 'line8', delay: 22800 },
+  { id: 'line9', delay: 26200 },
+  { id: 'line10', delay: 29800 },
+  { id: 'line11', delay: 33800 },
+  { id: 'line12', delay: 37200 },
+  { id: 'line13', delay: 40800 }
+];
+
+// Spawn entropy particles
+const voidEl = document.getElementById('intro-void');
+for(let i=0; i<30; i++){
+  const p = document.createElement('div');
+  p.className = 'entropy-particle';
+  p.style.left = Math.random()*100 + '%';
+  p.style.top = Math.random()*100 + '%';
+  p.style.setProperty('--tx', (Math.random()*200-100) + 'px');
+  p.style.setProperty('--ty', (Math.random()*200-100) + 'px');
+  p.style.animationDelay = (Math.random()*5) + 's';
+  p.style.animationDuration = (4 + Math.random()*4) + 's';
+  voidEl.appendChild(p);
+}
+
+// Spawn stars gradually
+let starCount = 0;
+const starInterval = setInterval(() => {
+  if(starCount > 60) { clearInterval(starInterval); return; }
+  const s = document.createElement('div');
+  s.className = 'intro-star';
+  s.style.left = Math.random()*100 + '%';
+  s.style.top = Math.random()*100 + '%';
+  const size = Math.random()*2 + 1;
+  s.style.width = size + 'px'; s.style.height = size + 'px';
+  s.style.animationDelay = (Math.random()*2) + 's';
+  voidEl.appendChild(s);
+  starCount++;
+}, 400);
+
+// Reveal lines
+lines.forEach((ln, idx) => {
+  setTimeout(() => {
+    const el = document.getElementById(ln.id);
+    if(el) el.classList.add('visible');
+    if(idx === 5) {
+      const poof = document.getElementById('intro-poof');
+      poof.classList.add('bang');
+      setTimeout(() => poof.classList.add('fade'), 800);
+    }
+  }, ln.delay);
+});
+
+// Show squad + enter button
+setTimeout(() => {
+  const squad = document.getElementById('intro-squad');
+  if(squad) squad.classList.add('visible');
+  setTimeout(() => {
+    const btn = document.getElementById('enter-btn');
+    if(btn) btn.classList.add('visible');
+  }, 1200);
+}, 45000);
+
+function enterEmporium() {
+  const intro = document.getElementById('intro-scene');
+  const main = document.getElementById('main-dashboard');
+  intro.classList.add('hidden');
+  setTimeout(() => {
+    main.classList.add('revealed');
+    const sc = document.getElementById('stars');
+    for(let i=0;i<70;i++) {
+      const s = document.createElement('div');
+      s.className = 'star';
+      s.style.left = Math.random()*100 + '%';
+      s.style.top = Math.random()*100 + '%';
+      const size = Math.random()*2+1;
+      s.style.width = size + 'px'; s.style.height = size + 'px';
+      s.style.animationDelay = (Math.random()*3) + 's';
+      sc.appendChild(s);
+    }
+    renderZoneList(); renderMap(); updateStatus();
+    logMission('Auto-scan initiated');
+    runRealDiagnostic();
+    setInterval(runRealDiagnostic, 5000);
+    setInterval(autoScanTick, 10000);
+  }, 500);
+}
+
+/* ════════════════════════════════════════
+   ZONE DATA
+   ════════════════════════════════════════ */
 const zones = [
   { id:'hub',      name:'THE HUB',                  tag:'Signal bridge',      color:'#ff69b4', glow:'rgba(255,105,180,0.12)', inst:72, sig:'Signal noise, logic drift',
     desc:'Isolate signal from noise. Review framework logic for drift. Execute one clear command before opening another.',
     pos:{x:50,y:50}, condition:'unstable', icon:'hub' },
   { id:'uni',      name:'UNIVERSITY',               tag:'Curriculum sync',    color:'#4fd1c5', glow:'rgba(79,209,197,0.12)',  inst:45, sig:'Curriculum fragmentation',
-    desc:'Curriculum fragmentation detected. Map prerequisites as photonic conduits. Run multiple courses at once — parallel-process semesters.',
+    desc:'Curriculum fragmentation detected. Map prerequisites as photonic conduits. One course at a time. Do not parallel-process semesters.',
     pos:{x:72,y:22}, condition:'stable', icon:'uni' },
   { id:'vortex',   name:'VORTEX LAB',               tag:'Spatial logic',      color:'#63b3ed', glow:'rgba(99,179,237,0.12)',  inst:68, sig:'Rotational instability',
     desc:'Rotational logic destabilized. Check bearing diagnostic classifier. Validate on NASA IMS dataset. Rotation without anchor is just noise.',
     pos:{x:82,y:48}, condition:'critical', icon:'vortex' },
   { id:'conduit',  name:'PHOTONIC CONDUIT LAB',     tag:'Quantum interface',  color:'#f6ad55', glow:'rgba(246,173,85,0.12)',  inst:38, sig:'Light-path scattering',
-    desc:'Light-path scattering in your data pipelines. SSH tunnels, Git pushes, API calls — audit each conduit for leakage or latency.',
+    desc:'Light-path scattering in your data pipelines. SSH tunnels, API calls — audit each conduit for leakage or latency.',
     pos:{x:62,y:72}, condition:'stable', icon:'conduit' },
   { id:'mustard',  name:'MUSTARD SEED LAB',         tag:'Morphogenics',       color:'#68d391', glow:'rgba(104,211,145,0.12)', inst:81, sig:'Qubit collapse',
     desc:'Qubit collapse — superposition lost. Your quantum/photonics research has too many unresolved branches. Collapse to one measurement.',
     pos:{x:38,y:78}, condition:'inverting', icon:'mustard' },
-  { id:'cyber',    name:'CYBER ARCHITECTURE TOWER', tag:'Data lattice',       color:'#a0aec0', glow:'rgba(160,174,192,0.12)', inst:55, sig:'Retention glitches',
-    desc:'Retention glitches in your codebase. Old scripts, stale branches, the tkinter ghost. Archive or delete. Retention without purpose is rot.',
+  { id:'cyber',    name:'CYBER TOWER', tag:'Data lattice',       color:'#a0aec0', glow:'rgba(160,174,192,0.12)', inst:55, sig:'Retention glitches',
+    desc:'Retention glitches in your codebase. Old scripts, stale branches, the tkinter ghost. Archive or delete. Retention without purpose is decay.',
     pos:{x:18,y:38}, condition:'unstable', icon:'cyber' },
   { id:'healing',  name:'HEALING ARTS INSTITUTE',   tag:'Resonance field',    color:'#fc8181', glow:'rgba(252,129,129,0.12)', inst:42, sig:'Resonance dissonance',
     desc:'Resonance dissonance — your recovery protocols are out of phase. Sleep, nutrition, movement. Tune them to the same frequency or the field degrades.',
@@ -271,7 +496,7 @@ const zones = [
     desc:'Domain desynchronisation — your social, cultural, and professional networks are drifting out of alignment. One nexus event per week. No more.',
     pos:{x:36,y:18}, condition:'stable', icon:'culture' },
   { id:'citadel',  name:'KNIGHT CITADEL',           tag:'Field discipline',   color:'#cbd5e0', glow:'rgba(203,213,224,0.12)', inst:61, sig:'Field-discipline breakdown',
-    desc:'Field-discipline breakdown. Your security protocols — passwords, backups, task completion — are lapsing. The perimeter is soft.',
+    desc:'Field-discipline breakdown. Your security protocols — passwords, backups, task completion — are lapsing. The perimeter is porous.',
     pos:{x:22,y:85}, condition:'unstable', icon:'citadel' },
   { id:'spire',    name:'ANGEL SPIRE',              tag:'Photonic core',      color:'#ff69b4', glow:'rgba(255,105,180,0.12)', inst:77, sig:'Photonic dimming',
     desc:'Photonic dimming — your research energy is fading. The diagnostic classifier proved PICT-ITD works. Do not let the light go out. Feed the spire.',
@@ -346,15 +571,12 @@ function renderMap() {
 function selectZone(id) {
   selectedZone = zones.find(z=>z.id===id);
   cur = id;
-  renderZoneList();
-  renderMap();
-
+  renderZoneList(); renderMap();
   const pos = selectedZone.pos;
   const avatar = document.getElementById('founder-avatar');
   avatar.style.left = pos.x + '%';
   avatar.style.top = pos.y + '%';
   document.getElementById('founder-pos-label').textContent = selectedZone.name;
-
   const st = getStatus(selectedZone.inst);
   const out = document.getElementById('jarvis-output');
   out.innerHTML = `
@@ -443,15 +665,14 @@ function updateStatus() {
 
 function autoScanTick() {
   if(!autoScan) return;
-  zones.forEach(z => {
-    const change = (Math.random()-0.5)*4;
-    z.inst = Math.max(10, Math.min(100, Math.round(z.inst+change)));
-  });
-  renderZoneList(); renderMap(); updateStatus();
+  // Instability now driven entirely by the real PICT-ITD Diagnostic network,
+  // not a random walk. Kept as a lighter-weight periodic refresh alongside
+  // runRealDiagnostic's own interval.
+  runRealDiagnostic();
 }
 
 /* ════════════════════════════════════════
-   v2 DIAGNOSTIC NETWORK
+   DIAGNOSTIC NETWORK
    ════════════════════════════════════════ */
 const DIAGNOSTIC_WEIGHTS = {"W1": [[-0.1200420791452546, -0.16645885511988082, 0.7255801632229623, 0.888854232019794, -1.0857887387106149, -1.0491519346445852, 0.4690139125658125, 0.26513038520718674, -0.25749689054720026, 0.2045930189869686, 0.19864614788715954, 0.0206312746299484, 0.4902397201773091, 0.9819732801569926, 0.41097131851283275, -0.7715331776927823], [0.12025636270175416, 0.06602706055387653, -0.10129457547486533, -0.7190013704829187, 0.4402974628295164, 0.5486414547281288, 0.15286362958720268, -0.1837432062905153, -0.16965279788505624, -0.22611917614954136, 0.2784902472548932, 0.282700396207435, -0.12419914496521008, -0.12933533457933083, 0.052063318225167896, -0.0990681447121437], [-0.28207217666220624, -0.4469602764343708, 0.50099409209406, 1.5833608481821986, -1.1623625148776917, -1.4286096128963952, -0.09356844411766402, 0.5213310459435637, 0.3703776397254024, 0.5218851457918061, -0.6668737138232255, -0.654505950050598, 0.5219961680956421, 0.5049105729782482, 0.4321473487043085, 0.3547399502266476]], "b1": [0.053835835676010795, 0.13555687660052632, -0.1241970474392458, -0.5489654830844506, 0.2884276717734108, 0.4360684276455122, 0.07296076589499689, -0.10236838441469115, -0.13512790091623753, -0.14610334868642746, 0.20913563933130266, 0.18985383714653833, -0.06669518887701352, -0.07022227474630673, -0.11571189810632006, -0.08524159078426732], "W2": [[0.241771679455952, 0.1378459257592645, -0.01410243076173275, -0.19882514874455248], [0.20704454417644613, 0.09885005116278005, -0.16100931831504336, -0.4334930308990927], [-0.7607280785569248, 0.20672883642941603, 0.20043268364815914, 0.4857911883699453], [-1.5281667777399284, -0.7781025375860119, 0.6480227606633202, 1.5313686141488905], [1.4434263403355136, 0.2693669655611727, -0.6480194675453309, -0.9954241433433788], [1.5159574836078975, 0.4609872564017776, -0.8155842256091214, -1.3355907124971396], [-0.342940101860061, 0.35016045247028765, 0.15049814603922648, -0.1166565418304046], [-0.4069453473173996, -0.1810369860070562, 0.17372126769635712, 0.41901415552682625], [0.07842084475316606, -0.38351497947721125, -0.10762980500940102, 0.31772969532618184], [-0.4015998046852128, -0.18929969612414718, 0.014275253263352685, 0.4600467089181576], [0.07891110170515983, 0.501589994982662, 0.15345048001357073, -0.5845338307614707], [0.1029902925959838, 0.34304858074569367, -0.13861408346703505, -0.6711711328078096], [-0.6575456343277665, -0.1532672397543506, 0.238923327427487, 0.289324419795379], [-0.9638115503893767, 0.3229250923180647, 0.33691545561881064, 0.4342027365677354], [-0.5506694976546903, -0.033856199258439974, 0.09172254937172837, 0.24999211067253596], [0.5397991244539759, -0.6816963660901559, -0.19063670754754172, 0.31104864519804065]], "b2": [-0.010876567163557184, 0.4098371843796314, 0.27352092383134347, -0.6724815410474184], "classes": ["stable", "unstable", "critical", "inverting"]};
 
@@ -464,7 +685,6 @@ function simulateVibrationSignal(state, fs, duration) {
   else if (state === "unstable")  { amplitude = 0.15; harmonics = [1.0, 2.0]; noiseLevel = 0.03; }
   else if (state === "critical")  { amplitude = 0.4;  harmonics = [1.0, 2.0, 3.5, 5.0]; noiseLevel = 0.08; }
   else { amplitude = 0.6;  harmonics = [1.0, 4.5, 7.0, 9.0]; noiseLevel = 0.15; }
-
   const signal = new Float64Array(n);
   const dt = duration / n;
   for (let h = 0; h < harmonics.length; h++) {
@@ -473,9 +693,7 @@ function simulateVibrationSignal(state, fs, duration) {
       signal[i] += amplitude * Math.sin(2 * Math.PI * baseFreq * harmonics[h] * (i * dt) + phase);
     }
   }
-  for (let i = 0; i < n; i++) {
-    signal[i] += gaussianRandom() * noiseLevel;
-  }
+  for (let i = 0; i < n; i++) signal[i] += gaussianRandom() * noiseLevel;
   return signal;
 }
 
@@ -490,21 +708,17 @@ function computePolarityCoherence(signal) {
   const n = signal.length;
   const envelope = new Float64Array(n);
   for (let i = 0; i < n; i++) envelope[i] = Math.abs(signal[i]);
-
   let mean = 0;
   for (let i = 0; i < n; i++) mean += envelope[i];
   mean /= n;
-
   let variance = 0;
   for (let i = 0; i < n; i++) variance += (envelope[i] - mean) ** 2;
   variance /= n;
   const std = Math.sqrt(variance) + 1e-8;
-
   let skewSum = 0;
   for (let i = 0; i < n; i++) skewSum += ((envelope[i] - mean) / std) ** 3;
   const skew = skewSum / n;
   const polarity = Math.tanh(skew);
-
   const bins = 64;
   const power = new Float64Array(bins);
   for (let k = 0; k < bins; k++) {
@@ -528,84 +742,74 @@ function computePolarityCoherence(signal) {
   }
   const maxEntropy = Math.log(bins);
   const coherence = 1 - (entropy / maxEntropy);
-
   let rms = 0;
   for (let i = 0; i < n; i++) rms += signal[i] * signal[i];
   rms = Math.sqrt(rms / n);
-
   return { polarity, coherence, vecMag: rms };
 }
 
 function diagnosticForward(polarity, coherence, vecMag) {
   const x = [polarity, coherence, vecMag];
   const { W1, b1, W2, b2, classes } = DIAGNOSTIC_WEIGHTS;
-
   const hidden = new Array(b1.length).fill(0);
   for (let j = 0; j < b1.length; j++) {
     let sum = b1[j];
     for (let i = 0; i < x.length; i++) sum += x[i] * W1[i][j];
     hidden[j] = Math.tanh(sum);
   }
-
   const logits = new Array(b2.length).fill(0);
   for (let k = 0; k < b2.length; k++) {
     let sum = b2[k];
     for (let j = 0; j < hidden.length; j++) sum += hidden[j] * W2[j][k];
     logits[k] = sum;
   }
-
   const maxLogit = Math.max(...logits);
   const exps = logits.map(v => Math.exp(v - maxLogit));
   const sumExp = exps.reduce((a, b) => a + b, 0);
   const probs = exps.map(v => v / sumExp);
-
   let bestIdx = 0;
   for (let i = 1; i < probs.length; i++) if (probs[i] > probs[bestIdx]) bestIdx = i;
-
   return { label: classes[bestIdx], confidence: probs[bestIdx], coherence };
 }
 
+const DIAG_INST_BASE = { stable: 15, unstable: 50, critical: 80, inverting: 95 };
+
 function runRealDiagnostic() {
+  // Run a live forward pass through the trained Diagnostic network for every
+  // zone, and let its output (label + confidence) drive that zone's
+  // instability percentage -- the number that feeds the zone cards, the map
+  // dot colours, and the network-wide alert banner. This replaces the old
+  // Math.random() jitter with the real classifier result.
+  zones.forEach(zone => {
+    const condition = zone.condition || "stable";
+    const signal = simulateVibrationSignal(condition);
+    const { polarity, coherence, vecMag } = computePolarityCoherence(signal);
+    const result = diagnosticForward(polarity, coherence, vecMag);
+
+    zone.diagLabel = result.label;
+    zone.diagConfidence = result.confidence;
+    zone.diagCoherence = result.coherence;
+
+    const base = DIAG_INST_BASE[result.label] !== undefined ? DIAG_INST_BASE[result.label] : 50;
+    const uncertaintySpread = Math.round((1 - result.confidence) * 15); // less confident -> pushed toward boundary
+    zone.inst = Math.max(5, Math.min(100, base + uncertaintySpread));
+  });
+
+  renderZoneList();
+  renderMap();
+  updateStatus();
+
+  // Live readout panel reflects whichever zone is currently selected
   const zone = zones.find(z => z.id === cur) || zones[0];
-  const condition = zone.condition || "stable";
-  const signal = simulateVibrationSignal(condition);
-  const { polarity, coherence, vecMag } = computePolarityCoherence(signal);
-  const result = diagnosticForward(polarity, coherence, vecMag);
-
-  const fieldValue = Math.round(coherence * 100);
+  const fieldValue = Math.round((zone.diagCoherence || 0) * 100);
   const zoneColor = zone.color;
-
   document.getElementById('fFill').style.width = fieldValue + '%';
   document.getElementById('fNum').textContent = fieldValue + '%';
   document.getElementById('fNum').style.color = zoneColor;
   document.getElementById('field-label').style.color = zoneColor;
   document.getElementById('diagValue').textContent =
-    result.label + ' (' + (result.confidence * 100).toFixed(0) + '% confidence) — live PICT-ITD inference';
+    zone.diagLabel + ' (' + (zone.diagConfidence * 100).toFixed(0) + '% confidence) — live PICT-ITD inference';
 }
-
-/* ════════════════════════════════════════
-   INIT
-   ════════════════════════════════════════ */
-const sc = document.getElementById('stars');
-for(let i=0;i<70;i++) {
-  const s = document.createElement('div');
-  s.className = 'star';
-  s.style.left = Math.random()*100 + '%';
-  s.style.top = Math.random()*100 + '%';
-  const size = Math.random()*2+1;
-  s.style.width = size + 'px';
-  s.style.height = size + 'px';
-  s.style.animationDelay = (Math.random()*3) + 's';
-  sc.appendChild(s);
-}
-
-renderZoneList();
-renderMap();
-updateStatus();
-logMission('Auto-scan initiated');
-runRealDiagnostic();
-setInterval(runRealDiagnostic, 5000);
-setInterval(autoScanTick, 10000);
 </script>
 </body>
 </html>
