@@ -80,7 +80,7 @@ The dashboard asks: what if managing your life felt like commanding a space-fari
 
 - **HTML5** — semantic structure
 - **CSS3** — custom properties, grid, flexbox, keyframe animations, backdrop-filter
-- **Vanilla JavaScript** — DOM manipulation, setTimeout cinematic sequencing, procedural generation, neural network inference
+- **JavaScript** — DOM manipulation, setTimeout cinematic sequencing, procedural generation, neural network inference
 - **SVG** — inline icons and animated conduit lines
 - No external assets — everything is self-contained (except the optional squadren_anime.png intro image)
 
@@ -90,7 +90,8 @@ The dashboard asks: what if managing your life felt like commanding a space-fari
 - Firefox 88+
 - Safari 14+
 - Edge 90+
-<img src="emporium_dashboard_thumbnail.png" alt="Emporium Dashboard" width="100%"/>
+
+https://ava-ak369.github.io/Emporium-Citadel/Emporium_genesis.html
 
 Requires support for CSS custom properties, CSS Grid, and backdrop-filter.
 
