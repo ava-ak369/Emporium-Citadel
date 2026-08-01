@@ -90,6 +90,7 @@ The dashboard asks: what if managing your life felt like commanding a space-fari
 - Firefox 88+
 - Safari 14+
 - Edge 90+
+<img src="emporium_dashboard_thumbnail.png" alt="Emporium Dashboard" width="100%"/>
 
 Requires support for CSS custom properties, CSS Grid, and backdrop-filter.
 
