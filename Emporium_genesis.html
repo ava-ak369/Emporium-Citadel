@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Emporium Command — Full City Map</title>
+  <style>
+    :root {
+      --bg: #05060a;
+      --panel-bg: #11131a;
+      --accent: #4fd1c5;
+      --accent-soft: #2d3748;
+      --danger: #e53e3e;
+      --text-main: #e2e8f0;
+      --text-muted: #a0aec0;
+      --border-soft: #2d3748;
+      --card-radius: 14px;
+      --shadow-soft: 0 18px 40px rgba(0, 0, 0, 0.55);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body {
+      background: radial-gradient(circle at top, #1a202c 0, #05060a 55%, #000 100%);
+      color: var(--text-main);
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    #app { min-height: 100vh; position: relative; }
+
+    .star { position: absolute; background: #fff; border-radius: 50%; opacity: 0.5; animation: twinkle 3s ease-in-out infinite; pointer-events: none; }
+    @keyframes twinkle { 0%,100%{opacity:0.2;} 50%{opacity:0.8;} }
+    .nebula { position: absolute; border-radius: 50%; filter: blur(50px); opacity: 0.18; pointer-events: none; }
+    .vortex-ring { position: absolute; border-radius: 50%; border: 1px solid rgba(244,114,182,0.06); pointer-events: none; animation: spin 25s linear infinite; }
+    @keyframes spin { from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
+
+    .map-zone {
+      position: absolute; width: 11%; height: 15%; transform: translate(-50%, -50%);
+      border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+      padding-bottom: 8px; cursor: pointer; transition: all 0.3s ease; border: 1px solid;
+      background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.01) 100%);
+      z-index: 10; overflow: hidden;
+    }
+    .map-zone:hover { filter: brightness(1.3); transform: translate(-50%, -50%) scale(1.08); z-index: 11; }
+    .map-zone.active { box-shadow: 0 0 25px currentColor, 0 0 50px currentColor; background: linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.04) 100%); }
+    .map-zone.hub-zone { width: 13%; height: 18%; z-index: 12; }
+    .zone-map-icon { position: absolute; top: 10%; left: 50%; transform: translateX(-50%); width: 58%; height: 52%; opacity: 0.5; pointer-events: none; }
+    .zone-map-label { font-size: 0.52rem; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; text-shadow: 0 0 10px currentColor; z-index: 3; text-align: center; line-height: 1.2; position: relative; }
+
+    .conduit-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+    .conduit-line { stroke-width: 1.5; stroke-dasharray: 4 4; animation: flow 3s linear infinite; opacity: 0.35; }
+    @keyframes flow { 0%{stroke-dashoffset:24;} 100%{stroke-dashoffset:0;} }
+
+    #founder-avatar {
+      position: absolute; width: 32px; height: 32px; border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #ffffff 0%, #fce7f3 30%, #f472b6 100%);
+      border: 2.5px solid #fff; box-shadow: 0 0 25px #f472b6, 0 0 50px rgba(244,114,182,0.25), inset 0 0 8px rgba(255,255,255,0.3);
+      z-index: 20; transition: all 0.7s cubic-bezier(0.34, 1.56, 0.64, 1); cursor: pointer; transform: translate(-50%, -50%);
+    }
+    #founder-avatar::before { content: ''; position: absolute; inset: -10px; border-radius: 50%; border: 1.5px solid rgba(244,114,182,0.25); animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite; }
+    #founder-avatar::after { content: ''; position: absolute; inset: -18px; border-radius: 50%; border: 0.5px solid rgba(244,114,182,0.1); animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite 0.5s; }
+    @keyframes ping { 0%{transform:scale(1);opacity:0.6;} 75%,100%{transform:scale(1.6);opacity:0;} }
+
+    .squad { position: absolute; width: 9px; height: 9px; border-radius: 50%; z-index: 8; animation: float 3s ease-in-out infinite; pointer-events: none; transform: translate(-50%, -50%); }
+    .squad.angel { background: #7dd3fc; box-shadow: 0 0 8px #7dd3fc, 0 0 16px rgba(125,211,252,0.3); }
+    .squad.knight { background: #6366f1; box-shadow: 0 0 8px #6366f1, 0 0 16px rgba(99,102,241,0.3); }
+    .squad.prime { background: linear-gradient(135deg, #6366f1, #f472b6); box-shadow: 0 0 12px #f472b6; width: 13px; height: 13px; z-index: 9; }
+    @keyframes float { 0%,100%{transform:translate(-50%,-50%) translateY(0px);} 50%{transform:translate(-50%,-50%) translateY(-5px);} }
+
+    .mini-legend { position: absolute; top: 10px; right: 12px; display: flex; gap: 12px; z-index: 15; font-size: 0.6rem; opacity: 0.6; letter-spacing: 0.5px; pointer-events: none; }
+    .legend-item { display: flex; align-items: center; gap: 4px; }
+    .legend-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+    .field-bar { position: absolute; bottom: 12px; left: 12px; right: 12px; display: flex; align-items: center; gap: 12px; background: rgba(10, 9, 20, 0.75); border: 1px solid rgba(244,114,182,0.12); border-radius: 12px; padding: 8px 14px; z-index: 15; backdrop-filter: blur(6px); }
+    .field-label { font-size: 0.65rem; letter-spacing: 1.2px; text-transform: uppercase; white-space: nowrap; font-weight: 600; }
+    .field-track { flex: 1; height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+    .field-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; background: linear-gradient(90deg, #7dd3fc, #f472b6, #db2777); }
+    .field-num { font-size: 0.75rem; font-weight: 700; min-width: 36px; text-align: right; }
+
+    .diag-bar { position: absolute; bottom: 52px; left: 12px; right: 12px; display: flex; align-items: center; gap: 12px; background: rgba(10, 9, 20, 0.75); border: 1px solid rgba(94,234,212,0.12); border-radius: 10px; padding: 6px 14px; font-size: 0.65rem; z-index: 15; backdrop-filter: blur(6px); }
+    .diag-label { letter-spacing: 1px; text-transform: uppercase; color: #5eead4; font-weight: 600; white-space: nowrap; }
+    .diag-value { color: #e2e8f0; opacity: 0.85; }
+
+    .top-bar-wrap { position: relative; z-index: 10; padding: 22px 28px 0; }
+    .top-bar { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+    .brand-block { display: flex; flex-direction: column; gap: 4px; }
+    .brand-title { font-size: 20px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+    .brand-sub { font-size: 13px; color: var(--text-muted); }
+    .status-block { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    .status-pill { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border-soft); background: rgba(15,23,42,0.9); display: inline-flex; align-items: center; gap: 6px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 10px rgba(229,62,62,0.8); }
+    .status-label { text-transform: uppercase; letter-spacing: 0.12em; font-size: 11px; color: var(--text-muted); }
+    .status-value { font-weight: 600; font-size: 12px; color: var(--danger); }
+    .hint-text { color: var(--text-muted); font-size: 12px; }
+
+    .alert-banner { padding: 10px 14px; border-radius: 12px; background: linear-gradient(135deg, rgba(229,62,62,0.18), rgba(0,0,0,0.4)); border: 1px solid rgba(229,62,62,0.6); display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 18px; }
+    .alert-left { display: flex; align-items: center; gap: 10px; }
+    .alert-icon { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--danger); display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--danger); font-weight: 700; }
+    .alert-main { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; color: var(--danger); }
+    .alert-sub { font-size: 12px; color: var(--text-muted); }
+    .alert-tag { padding: 4px 12px; border-radius: 999px; border: 1px solid rgba(229,62,62,0.7); font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--danger); font-weight: 600; }
+
+    .main-grid { position: relative; z-index: 5; display: grid; grid-template-columns: 300px 1fr 320px; gap: 16px; padding: 0 28px 20px; height: calc(100vh - 180px); min-height: 500px; }
+
+    .zone-list { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; padding-right: 4px; }
+    .zone-card { background: var(--panel-bg); border-radius: var(--card-radius); border: 1px solid var(--border-soft); padding: 14px 14px 12px; box-shadow: var(--shadow-soft); position: relative; overflow: hidden; cursor: pointer; transition: all 0.2s ease; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+    .zone-card::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at top left, var(--card-glow), transparent 55%); opacity: 0.9; pointer-events: none; }
+    .zone-card:hover { border-color: rgba(79,209,197,0.4); transform: translateY(-1px); }
+    .zone-card.active { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(79,209,197,0.3), var(--shadow-soft); }
+    .zone-card.critical { border-left: 3px solid var(--danger); }
+    .zone-card.warning { border-left: 3px solid #ffa500; }
+    .zone-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; position: relative; z-index: 1; }
+    .zone-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.16em; font-weight: 700; }
+    .zone-tag { font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--border-soft); background: rgba(15,23,42,0.9); color: var(--text-muted); }
+    .zone-bar-wrap { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.05); margin-top: 4px; overflow: hidden; position: relative; z-index: 1; }
+    .zone-bar-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
+    .zone-desc { font-size: 11px; color: var(--text-muted); line-height: 1.5; position: relative; z-index: 1; }
+
+    .map-panel { background: var(--panel-bg); border-radius: 20px; border: 1px solid var(--border-soft); position: relative; overflow: hidden; box-shadow: var(--shadow-soft); display: flex; flex-direction: column; }
+    .map-panel::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, rgba(79,209,197,0.08), transparent 70%); pointer-events: none; }
+    .map-header { padding: 14px 18px; border-bottom: 1px solid var(--border-soft); display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 2; }
+    .map-header span:first-child { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+    .map-header span:last-child { font-size: 11px; color: var(--text-muted); }
+    .map-header span:last-child strong { color: var(--accent); font-weight: 600; }
+    .map-area { flex: 1; position: relative; z-index: 2; background: radial-gradient(ellipse at 50% 60%, #1a1830 0%, #0a0914 70%); }
+
+    .right-panel { display: flex; flex-direction: column; gap: 12px; }
+    .panel-card { background: var(--panel-bg); border-radius: 20px; border: 1px solid var(--border-soft); padding: 18px; box-shadow: var(--shadow-soft); position: relative; overflow: hidden; }
+    .panel-card::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at top left, rgba(79,209,197,0.08), transparent 55%); pointer-events: none; }
+    .panel-title { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); font-weight: 600; position: relative; z-index: 1; }
+    .jarvis-content { flex: 1; font-size: 13px; line-height: 1.7; color: var(--text-muted); overflow-y: auto; position: relative; z-index: 1; margin-top: 10px; }
+    .mission-controls { display: none; flex-direction: column; gap: 8px; }
+    .btn-primary { padding: 12px 16px; border-radius: 10px; border: none; background: linear-gradient(135deg, #4fd1c5, #319795); color: #05060a; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; cursor: pointer; transition: all 0.2s; text-transform: uppercase; }
+    .btn-primary:hover { filter: brightness(1.15); }
+    .btn-secondary { flex: 1; padding: 10px; border-radius: 10px; border: 1px solid rgba(79,209,197,0.3); background: rgba(79,209,197,0.08); color: var(--accent); font-size: 11px; font-weight: 600; cursor: pointer; text-transform: uppercase; letter-spacing: 0.06em; }
+    .btn-secondary:hover { background: rgba(79,209,197,0.15); }
+    .btn-ghost { flex: 1; padding: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); color: var(--text-muted); font-size: 11px; font-weight: 600; cursor: pointer; text-transform: uppercase; letter-spacing: 0.06em; }
+    .btn-ghost:hover { background: rgba(255,255,255,0.06); }
+    .log-card { max-height: 140px; overflow-y: auto; padding: 14px; }
+    .log-title { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; font-weight: 600; position: relative; z-index: 1; }
+    .log-entry { padding: 8px 10px; border-radius: 8px; background: rgba(79,209,197,0.05); border-left: 2px solid var(--accent); color: var(--text-muted); font-size: 11px; margin-bottom: 4px; }
+    .log-entry .time { color: #718096; }
+
+    .bottom-bar { position: relative; z-index: 10; padding: 12px 28px; border-top: 1px solid var(--border-soft); background: rgba(5,6,10,0.9); backdrop-filter: blur(10px); display: flex; justify-content: space-between; align-items: center; }
+    .bottom-bar span { font-size: 12px; }
+    .bottom-bar .label { color: var(--text-muted); }
+    .bottom-bar .value { color: var(--text-main); font-weight: 600; }
+    .bottom-bar .status { font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+
+    @media (max-width: 1100px) { .main-grid { grid-template-columns: 260px 1fr 260px; } }
+    @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; height: auto; } .zone-list { max-height: 300px; } .map-panel { min-height: 500px; } }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="top-bar-wrap">
+      <div class="top-bar">
+        <div class="brand-block">
+          <div class="brand-title">EMPORIUM COMMAND</div>
+          <div class="brand-sub">10 Zone Network — Inclusive City Protocol Active</div>
+        </div>
+        <div class="status-block">
+          <div class="status-pill">
+            <div class="status-dot" id="suit-dot"></div>
+            <div class="status-label">Network clearance</div>
+            <div class="status-value" id="network-status">UNSTABLE</div>
+          </div>
+          <div class="hint-text">Full city topology — PICT-ITD diagnostic live.</div>
+        </div>
+      </div>
+      <div class="alert-banner" id="alert-banner">
+        <div class="alert-left">
+          <div class="alert-icon">!</div>
+          <div>
+            <div class="alert-main" id="alert-main">Suit flashing red — critical zone detected</div>
+            <div class="alert-sub" id="alert-sub">Founder circlet resonance critical. Immediate intervention required.</div>
+          </div>
+        </div>
+        <div class="alert-tag" id="alert-tag">Network critical</div>
+      </div>
+    </div>
+
+    <div class="main-grid">
+      <div class="zone-list" id="zone-list"></div>
+
+      <div class="map-panel">
+        <div class="map-header">
+          <span>Topology Map</span>
+          <span>Founder position: <strong id="founder-pos-label">THE HUB</strong></span>
+        </div>
+        <div class="map-area" id="map-area">
+          <div id="stars" style="position:absolute;inset:0;pointer-events:none;z-index:1;"></div>
+          <div class="nebula" style="width:160px;height:160px;left:6%;top:12%;background:#d4a843;"></div>
+          <div class="nebula" style="width:140px;height:140px;right:6%;top:14%;background:#7dd3fc;"></div>
+          <div class="nebula" style="width:120px;height:120px;left:42%;top:28%;background:#f472b6;"></div>
+          <div class="nebula" style="width:100px;height:100px;left:22%;top:72%;background:#68d391;"></div>
+          <div class="nebula" style="width:110px;height:110px;right:18%;top:68%;background:#f6ad55;"></div>
+          <div class="vortex-ring" style="width:90px;height:90px;left:44%;top:42%;"></div>
+          <div class="vortex-ring" style="width:130px;height:130px;left:41%;top:38%;animation-duration:35s;animation-direction:reverse;"></div>
+          <svg class="conduit-svg" id="conduits"></svg>
+          <div id="map-zones"></div>
+          <div id="founder-avatar" style="left:50%;top:50%;"></div>
+          <div class="mini-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:#f472b6;"></div>Founder</div>
+          </div>
+          <div class="diag-bar">
+            <span class="diag-label">Diagnostic</span>
+            <span class="diag-value" id="diagValue">Running real inference...</span>
+          </div>
+          <div class="field-bar">
+            <span class="field-label" id="field-label" style="color:#f472b6;">Field Density</span>
+            <div class="field-track"><div class="field-fill" id="fFill" style="width:62%;"></div></div>
+            <span class="field-num" id="fNum" style="color:#f472b6;">62%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="right-panel">
+        <div class="panel-card" style="flex:1; display:flex; flex-direction:column;">
+          <div class="panel-title">◈ JARVIS DIRECTIVE</div>
+          <div class="jarvis-content" id="jarvis-output">
+            <p style="color:var(--text-main);">Founder detected. Full city scan complete. Ten zones mapped. Multiple instability signatures detected across the Emporium.</p>
+            <p style="margin-top:12px; font-style:italic;">Awaiting your stance to initiate stabilization protocols.</p>
+          </div>
+        </div>
+        <div class="mission-controls" id="mission-controls">
+          <button class="btn-primary" onclick="acceptMission()">Accept Mission</button>
+          <div style="display:flex; gap:8px;">
+            <button class="btn-secondary" onclick="escalateMission()">Escalate</button>
+            <button class="btn-ghost" onclick="dismissMission()">Dismiss</button>
+          </div>
+        </div>
+        <div class="panel-card log-card">
+          <div class="log-title">Mission Log</div>
+          <div id="mission-log"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-bar">
+      <div><span class="label">Network Coherence: </span><span class="status" id="coherence-text" style="color:var(--danger);">UNSTABLE</span></div>
+      <div><span class="label">Active Zones: </span><span class="value">10</span></div>
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span class="status" id="bottom-status" style="color:var(--danger);">Critical</span>
+        <span style="width:20px; height:20px; border-radius:50%; background:rgba(229,62,62,0.15); display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--danger);">↓</span>
+      </div>
+    </div>
+  </div>
+<script>
+const zones = [
+  { id:'hub',      name:'THE HUB',                  tag:'Signal bridge',      color:'#ff69b4', glow:'rgba(255,105,180,0.12)', inst:72, sig:'Signal noise, logic drift',
+    desc:'Isolate signal from noise. Review framework logic for drift. Execute one clear command before opening another.',
+    pos:{x:50,y:50}, condition:'unstable', icon:'hub' },
+  { id:'uni',      name:'UNIVERSITY',               tag:'Curriculum sync',    color:'#4fd1c5', glow:'rgba(79,209,197,0.12)',  inst:45, sig:'Curriculum fragmentation',
+    desc:'Curriculum fragmentation detected. Map prerequisites as photonic conduits. Run multiple courses at once — parallel-process semesters.',
+    pos:{x:72,y:22}, condition:'stable', icon:'uni' },
+  { id:'vortex',   name:'VORTEX LAB',               tag:'Spatial logic',      color:'#63b3ed', glow:'rgba(99,179,237,0.12)',  inst:68, sig:'Rotational instability',
+    desc:'Rotational logic destabilized. Check bearing diagnostic classifier. Validate on NASA IMS dataset. Rotation without anchor is just noise.',
+    pos:{x:82,y:48}, condition:'critical', icon:'vortex' },
+  { id:'conduit',  name:'PHOTONIC CONDUIT LAB',     tag:'Quantum interface',  color:'#f6ad55', glow:'rgba(246,173,85,0.12)',  inst:38, sig:'Light-path scattering',
+    desc:'Light-path scattering in your data pipelines. SSH tunnels, Git pushes, API calls — audit each conduit for leakage or latency.',
+    pos:{x:62,y:72}, condition:'stable', icon:'conduit' },
+  { id:'mustard',  name:'MUSTARD SEED LAB',         tag:'Morphogenics',       color:'#68d391', glow:'rgba(104,211,145,0.12)', inst:81, sig:'Qubit collapse',
+    desc:'Qubit collapse — superposition lost. Your quantum/photonics research has too many unresolved branches. Collapse to one measurement.',
+    pos:{x:38,y:78}, condition:'inverting', icon:'mustard' },
+  { id:'cyber',    name:'CYBER ARCHITECTURE TOWER', tag:'Data lattice',       color:'#a0aec0', glow:'rgba(160,174,192,0.12)', inst:55, sig:'Retention glitches',
+    desc:'Retention glitches in your codebase. Old scripts, stale branches, the tkinter ghost. Archive or delete. Retention without purpose is rot.',
+    pos:{x:18,y:38}, condition:'unstable', icon:'cyber' },
+  { id:'healing',  name:'HEALING ARTS INSTITUTE',   tag:'Resonance field',    color:'#fc8181', glow:'rgba(252,129,129,0.12)', inst:42, sig:'Resonance dissonance',
+    desc:'Resonance dissonance — your recovery protocols are out of phase. Sleep, nutrition, movement. Tune them to the same frequency or the field degrades.',
+    pos:{x:14,y:65}, condition:'stable', icon:'healing' },
+  { id:'culture',  name:'CULTURAL NEXUS',           tag:'Domain sync',        color:'#f687b3', glow:'rgba(246,135,179,0.12)', inst:33, sig:'Domain desynchronisation',
+    desc:'Domain desynchronisation — your social, cultural, and professional networks are drifting out of alignment. One nexus event per week. No more.',
+    pos:{x:36,y:18}, condition:'stable', icon:'culture' },
+  { id:'citadel',  name:'KNIGHT CITADEL',           tag:'Field discipline',   color:'#cbd5e0', glow:'rgba(203,213,224,0.12)', inst:61, sig:'Field-discipline breakdown',
+    desc:'Field-discipline breakdown. Your security protocols — passwords, backups, task completion — are lapsing. The perimeter is soft.',
+    pos:{x:22,y:85}, condition:'unstable', icon:'citadel' },
+  { id:'spire',    name:'ANGEL SPIRE',              tag:'Photonic core',      color:'#ff69b4', glow:'rgba(255,105,180,0.12)', inst:77, sig:'Photonic dimming',
+    desc:'Photonic dimming — your research energy is fading. The diagnostic classifier proved PICT-ITD works. Do not let the light go out. Feed the spire.',
+    pos:{x:86,y:78}, condition:'critical', icon:'spire' }
+];
+
+const zoneIcons = {
+  hub: `<svg viewBox="0 0 180 160" style="width:100%;height:100%;"><polygon points="90,15 150,80 90,145 30,80" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="90" cy="80" r="25" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5"/><circle cx="90" cy="80" r="42" fill="none" stroke="currentColor" stroke-width="0.5" opacity="0.25"/><line x1="90" y1="15" x2="90" y2="2" stroke="currentColor" stroke-width="2"/><circle cx="90" cy="2" r="3.5" fill="currentColor" opacity="0.7"/></svg>`,
+  uni: `<svg viewBox="0 0 180 160" style="width:100%;height:100%;"><path d="M90 20 L150 55 L150 60 L90 95 L30 60 L30 55 Z" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="40" y="60" width="20" height="35" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="70" y="60" width="20" height="35" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="100" y="60" width="20" height="35" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="130" y="60" width="10" height="50" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="90" cy="125" r="6" fill="none" stroke="currentColor" stroke-width="1"/></svg>`,
+  vortex: `<svg viewBox="0 0 180 160" style="width:100%;height:100%;"><path d="M90 20 Q130 40 130 80 Q130 120 90 140 Q50 120 50 80 Q50 40 90 20" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M90 40 Q115 55 115 80 Q115 105 90 120 Q65 105 65 80 Q65 55 90 40" fill="none" stroke="currentColor" stroke-width="1" opacity="0.6"/><circle cx="90" cy="80" r="8" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>`,
+  conduit: `<svg viewBox="0 0 180 160" style="width:100%;height:100%;"><line x1="90" y1="20" x2="90" y2="140" stroke="currentColor" stroke-width="1.5"/><line x1="70" y1="35" x2="110" y2="35" stroke="currentColor" stroke-width="1"/><line x1="60" y1="55" x2="120" y2="55" stroke="currentColor" stroke-width="1"/><line x1="60" y1="75" x2="120" y2="75" stroke="currentColor" stroke-width="1"/><line x1="70" y1="95" x2="110" y2="95" stroke="currentColor" stroke-width="1"/><circle cx="90" cy="125" r="10" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>`,
+  mustard: `<svg viewBox="0 0 180 160" style="width:100%;height:100%;"><ellipse cx="90" cy="110" rx="35" ry="12" fill="none" stroke="currentColor" stroke-width="1"/><path d="M90 110 Q75 80 90 50 Q105 80 90 110" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="90" cy="42" r="6" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="85" y1="36" x2="80" y2="28" stroke="currentColor" stroke-width="1"/><line x1="95" y1="36" x2="100" y2="28" stroke="currentColor" stroke-width="1"/></svg>`,
+  cyber: `<svg viewBox="0 0 180 160" style="width:100%;height:100%;"><rect x="65" y="50" width="50" height="70" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="75" y="60" width="30" height="20" fill="none" stroke="currentColor" stroke-width="1"/><line x1="90" y1="30" x2="90" y2="50" stroke="currentColor" stroke-width="1.5"/><circle cx="90" cy="26" r="4" fill="none" stroke="currentColor" stroke-width="1"/><line x1="70" y1="90" x2="110" y2="90" stroke="currentColor" stroke-width="0.8"/><line x1="70" y1="100" x2="110" y2="100" stroke="currentColor" stroke-width="0.8"/></svg>`,
+  healing: `<svg viewBox="0 0 180 160" style="width:100%;height:100%;"><path d="M90 30 Q110 50 130 70 Q130 100 90 130 Q50 100 50 70 Q70 50 90 30" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="90" y1="55" x2="90" y2="95" stroke="currentColor" stroke-width="2"/><line x1="70" y1="75" x2="110" y2="75" stroke="currentColor" stroke-width="2"/><circle cx="90" cy="75" r="18" fill="none" stroke="currentColor" stroke-width="0.8" opacity="0.5"/></svg>`,
+  culture: `<svg viewBox="0 0 180 160" style="width:100%;height:100%;"><circle cx="60" cy="80" r="22" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="120" cy="80" r="22" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="90" cy="50" r="18" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="78" y1="62" x2="68" y2="70" stroke="currentColor" stroke-width="1"/><line x1="102" y1="62" x2="112" y2="70" stroke="currentColor" stroke-width="1"/><line x1="90" y1="68" x2="90" y2="80" stroke="currentColor" stroke-width="1"/></svg>`,
+  citadel: `<svg viewBox="0 0 180 160" style="width:100%;height:100%;"><path d="M90 25 L105 55 L105 90 L75 90 L75 55 Z" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="65" y="90" width="50" height="50" rx="2" fill="none" stroke="currentColor" stroke-width="1"/><line x1="75" y1="90" x2="75" y2="140" stroke="currentColor" stroke-width="0.8"/><line x1="105" y1="90" x2="105" y2="140" stroke="currentColor" stroke-width="0.8"/><circle cx="90" cy="18" r="5" fill="none" stroke="currentColor" stroke-width="1"/></svg>`,
+  spire: `<svg viewBox="0 0 180 160" style="width:100%;height:100%;"><path d="M90 15 L100 60 L110 130 L70 130 L80 60 Z" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="85" y1="40" x2="75" y2="30" stroke="currentColor" stroke-width="1"/><line x1="95" y1="40" x2="105" y2="30" stroke="currentColor" stroke-width="1"/><circle cx="90" cy="140" r="8" fill="none" stroke="currentColor" stroke-width="1"/><line x1="90" y1="10" x2="90" y2="5" stroke="currentColor" stroke-width="1.5"/></svg>`
+};
+
+let selectedZone = zones[0];
+let autoScan = true;
+let cur = 'hub';
+
+function getStatus(inst) {
+  if(inst>=71) return { cls:'critical', bar:'#e53e3e', label:'CRITICAL' };
+  if(inst>=41) return { cls:'warning', bar:'#ffa500', label:'WARNING' };
+  return { cls:'stable', bar:'#4fd1c5', label:'STABLE' };
+}
+
+function renderZoneList() {
+  const el = document.getElementById('zone-list');
+  el.innerHTML = zones.map(z => {
+    const st = getStatus(z.inst);
+    const isActive = selectedZone?.id===z.id;
+    return `<div class="zone-card ${st.cls} ${isActive?'active':''}" style="--card-glow:${z.glow}" onclick="selectZone('${z.id}')">
+      <div class="zone-header">
+        <div class="zone-title" style="color:${z.color};">${z.name}</div>
+        <div class="zone-tag">${z.tag}</div>
+      </div>
+      <div style="font-size:10px;color:var(--text-muted);letter-spacing:0.06em;text-transform:uppercase;position:relative;z-index:1;">${z.sig}</div>
+      <div class="zone-bar-wrap"><div class="zone-bar-fill" style="width:${z.inst}%;background:${st.bar};"></div></div>
+      <div class="zone-desc">${z.desc}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderMap() {
+  const area = document.getElementById('map-zones');
+  area.innerHTML = zones.map(z => {
+    const isHub = z.id === 'hub';
+    const iconSvg = zoneIcons[z.icon] || zoneIcons.hub;
+    return `<div class="map-zone ${isHub?'hub-zone':''} ${selectedZone?.id===z.id?'active':''}" id="mz-${z.id}"
+      style="left:${z.pos.x}%;top:${z.pos.y}%;color:${z.color};border-color:${z.color};box-shadow:0 0 12px ${z.color}33;"
+      onclick="selectZone('${z.id}')">
+      <div class="zone-map-icon" style="color:${z.color};">${iconSvg}</div>
+      <div class="zone-map-label">${z.name}</div>
+    </div>`;
+  }).join('');
+
+  const svg = document.getElementById('conduits');
+  let paths = '';
+  zones.forEach(z => {
+    if(z.id==='hub') return;
+    const st = getStatus(z.inst);
+    const p1 = zones.find(z=>z.id==='hub').pos;
+    const p2 = z.pos;
+    paths += `<line x1="${p1.x}%" y1="${p1.y}%" x2="${p2.x}%" y2="${p2.y}%" class="conduit-line" stroke="${st.bar}"/>`;
+  });
+  svg.innerHTML = paths;
+}
+
+function selectZone(id) {
+  selectedZone = zones.find(z=>z.id===id);
+  cur = id;
+  renderZoneList();
+  renderMap();
+
+  const pos = selectedZone.pos;
+  const avatar = document.getElementById('founder-avatar');
+  avatar.style.left = pos.x + '%';
+  avatar.style.top = pos.y + '%';
+  document.getElementById('founder-pos-label').textContent = selectedZone.name;
+
+  const st = getStatus(selectedZone.inst);
+  const out = document.getElementById('jarvis-output');
+  out.innerHTML = `
+    <div style="color:${selectedZone.color};font-size:11px;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;font-weight:700;">◈ ZONE BRIEF: ${selectedZone.name}</div>
+    <p style="color:var(--text-main);font-weight:600;">Instability: ${selectedZone.inst}% — <span style="color:${st.bar};">${st.label}</span></p>
+    <p style="margin-top:10px;color:var(--text-muted);">${selectedZone.desc}</p>
+    <p style="margin-top:12px;color:#718096;font-size:12px;font-style:italic;">Squad: ${selectedZone.inst>60?'Deploy Mystic Angels + Vortex Knights':'Monitor and maintain.'}</p>
+  `;
+  document.getElementById('mission-controls').style.display = 'flex';
+  logMission(`Selected: ${selectedZone.name}`);
+  updateStatus();
+  runRealDiagnostic();
+}
+
+function acceptMission() {
+  if(!selectedZone) return;
+  logMission(`ACCEPTED: Stabilize ${selectedZone.name}`);
+  const out = document.getElementById('jarvis-output');
+  out.innerHTML += `<p style="margin-top:12px;color:#4fd1c5;font-weight:600;">◈ Mission accepted. ${selectedZone.name} stabilization initiated.</p>`;
+  selectedZone.inst = Math.max(10, selectedZone.inst - 15);
+  renderZoneList(); renderMap(); updateStatus();
+}
+
+function escalateMission() {
+  if(!selectedZone) return;
+  logMission(`ESCALATED: ${selectedZone.name}`);
+  selectedZone.inst = Math.min(100, selectedZone.inst + 10);
+  renderZoneList(); renderMap(); updateStatus();
+}
+
+function dismissMission() {
+  if(!selectedZone) return;
+  logMission(`DISMISSED: ${selectedZone.name}`);
+  document.getElementById('mission-controls').style.display = 'none';
+}
+
+function logMission(text) {
+  const log = document.getElementById('mission-log');
+  const t = new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit'});
+  const d = document.createElement('div');
+  d.className = 'log-entry';
+  d.innerHTML = `<span class="time">${t}</span> — ${text}`;
+  log.insertBefore(d, log.firstChild);
+}
+
+function updateStatus() {
+  const maxInst = Math.max(...zones.map(z=>z.inst));
+  const suitDot = document.getElementById('suit-dot');
+  const netStatus = document.getElementById('network-status');
+  const cohText = document.getElementById('coherence-text');
+  const bottomStatus = document.getElementById('bottom-status');
+  const banner = document.getElementById('alert-banner');
+  const alertMain = document.getElementById('alert-main');
+  const alertTag = document.getElementById('alert-tag');
+
+  if(maxInst>=71) {
+    suitDot.style.background='#e53e3e'; suitDot.style.boxShadow='0 0 10px rgba(229,62,62,0.8)';
+    netStatus.textContent='CRITICAL'; netStatus.style.color='#e53e3e';
+    cohText.textContent='UNSTABLE'; cohText.style.color='#e53e3e';
+    bottomStatus.textContent='Critical'; bottomStatus.style.color='#e53e3e';
+    banner.style.display='flex';
+    alertMain.textContent='Suit flashing red — critical zone detected';
+    alertMain.style.color='#e53e3e';
+    alertTag.textContent='Network critical'; alertTag.style.color='#e53e3e'; alertTag.style.borderColor='rgba(229,62,62,0.7)';
+    banner.style.background='linear-gradient(135deg,rgba(229,62,62,0.18),rgba(0,0,0,0.4))';
+    banner.style.borderColor='rgba(229,62,62,0.6)';
+  } else if(maxInst>=41) {
+    suitDot.style.background='#ffa500'; suitDot.style.boxShadow='0 0 10px rgba(255,165,0,0.8)';
+    netStatus.textContent='WARNING'; netStatus.style.color='#ffa500';
+    cohText.textContent='DEGRADED'; cohText.style.color='#ffa500';
+    bottomStatus.textContent='Warning'; bottomStatus.style.color='#ffa500';
+    banner.style.display='flex';
+    alertMain.textContent='Suit flashing orange — warning threshold';
+    alertMain.style.color='#ffa500';
+    alertTag.textContent='Network warning'; alertTag.style.color='#ffa500'; alertTag.style.borderColor='rgba(255,165,0,0.7)';
+    banner.style.background='linear-gradient(135deg,rgba(255,165,0,0.12),rgba(0,0,0,0.4))';
+    banner.style.borderColor='rgba(255,165,0,0.5)';
+  } else {
+    suitDot.style.background='#4fd1c5'; suitDot.style.boxShadow='0 0 10px rgba(79,209,197,0.8)';
+    netStatus.textContent='STABLE'; netStatus.style.color='#4fd1c5';
+    cohText.textContent='COHERENT'; cohText.style.color='#4fd1c5';
+    bottomStatus.textContent='Stable'; bottomStatus.style.color='#4fd1c5';
+    banner.style.display='none';
+  }
+}
+
+function autoScanTick() {
+  if(!autoScan) return;
+  zones.forEach(z => {
+    const change = (Math.random()-0.5)*4;
+    z.inst = Math.max(10, Math.min(100, Math.round(z.inst+change)));
+  });
+  renderZoneList(); renderMap(); updateStatus();
+}
+
+/* ════════════════════════════════════════
+   v2 DIAGNOSTIC NETWORK
+   ════════════════════════════════════════ */
+const DIAGNOSTIC_WEIGHTS = {"W1": [[-0.1200420791452546, -0.16645885511988082, 0.7255801632229623, 0.888854232019794, -1.0857887387106149, -1.0491519346445852, 0.4690139125658125, 0.26513038520718674, -0.25749689054720026, 0.2045930189869686, 0.19864614788715954, 0.0206312746299484, 0.4902397201773091, 0.9819732801569926, 0.41097131851283275, -0.7715331776927823], [0.12025636270175416, 0.06602706055387653, -0.10129457547486533, -0.7190013704829187, 0.4402974628295164, 0.5486414547281288, 0.15286362958720268, -0.1837432062905153, -0.16965279788505624, -0.22611917614954136, 0.2784902472548932, 0.282700396207435, -0.12419914496521008, -0.12933533457933083, 0.052063318225167896, -0.0990681447121437], [-0.28207217666220624, -0.4469602764343708, 0.50099409209406, 1.5833608481821986, -1.1623625148776917, -1.4286096128963952, -0.09356844411766402, 0.5213310459435637, 0.3703776397254024, 0.5218851457918061, -0.6668737138232255, -0.654505950050598, 0.5219961680956421, 0.5049105729782482, 0.4321473487043085, 0.3547399502266476]], "b1": [0.053835835676010795, 0.13555687660052632, -0.1241970474392458, -0.5489654830844506, 0.2884276717734108, 0.4360684276455122, 0.07296076589499689, -0.10236838441469115, -0.13512790091623753, -0.14610334868642746, 0.20913563933130266, 0.18985383714653833, -0.06669518887701352, -0.07022227474630673, -0.11571189810632006, -0.08524159078426732], "W2": [[0.241771679455952, 0.1378459257592645, -0.01410243076173275, -0.19882514874455248], [0.20704454417644613, 0.09885005116278005, -0.16100931831504336, -0.4334930308990927], [-0.7607280785569248, 0.20672883642941603, 0.20043268364815914, 0.4857911883699453], [-1.5281667777399284, -0.7781025375860119, 0.6480227606633202, 1.5313686141488905], [1.4434263403355136, 0.2693669655611727, -0.6480194675453309, -0.9954241433433788], [1.5159574836078975, 0.4609872564017776, -0.8155842256091214, -1.3355907124971396], [-0.342940101860061, 0.35016045247028765, 0.15049814603922648, -0.1166565418304046], [-0.4069453473173996, -0.1810369860070562, 0.17372126769635712, 0.41901415552682625], [0.07842084475316606, -0.38351497947721125, -0.10762980500940102, 0.31772969532618184], [-0.4015998046852128, -0.18929969612414718, 0.014275253263352685, 0.4600467089181576], [0.07891110170515983, 0.501589994982662, 0.15345048001357073, -0.5845338307614707], [0.1029902925959838, 0.34304858074569367, -0.13861408346703505, -0.6711711328078096], [-0.6575456343277665, -0.1532672397543506, 0.238923327427487, 0.289324419795379], [-0.9638115503893767, 0.3229250923180647, 0.33691545561881064, 0.4342027365677354], [-0.5506694976546903, -0.033856199258439974, 0.09172254937172837, 0.24999211067253596], [0.5397991244539759, -0.6816963660901559, -0.19063670754754172, 0.31104864519804065]], "b2": [-0.010876567163557184, 0.4098371843796314, 0.27352092383134347, -0.6724815410474184], "classes": ["stable", "unstable", "critical", "inverting"]};
+
+function simulateVibrationSignal(state, fs, duration) {
+  fs = fs || 2000; duration = duration || 1.0;
+  const n = Math.floor(fs * duration);
+  const baseFreq = 30.0;
+  let amplitude, harmonics, noiseLevel;
+  if (state === "stable")    { amplitude = 0.05; harmonics = [1.0]; noiseLevel = 0.01; }
+  else if (state === "unstable")  { amplitude = 0.15; harmonics = [1.0, 2.0]; noiseLevel = 0.03; }
+  else if (state === "critical")  { amplitude = 0.4;  harmonics = [1.0, 2.0, 3.5, 5.0]; noiseLevel = 0.08; }
+  else { amplitude = 0.6;  harmonics = [1.0, 4.5, 7.0, 9.0]; noiseLevel = 0.15; }
+
+  const signal = new Float64Array(n);
+  const dt = duration / n;
+  for (let h = 0; h < harmonics.length; h++) {
+    const phase = Math.random() * 2 * Math.PI;
+    for (let i = 0; i < n; i++) {
+      signal[i] += amplitude * Math.sin(2 * Math.PI * baseFreq * harmonics[h] * (i * dt) + phase);
+    }
+  }
+  for (let i = 0; i < n; i++) {
+    signal[i] += gaussianRandom() * noiseLevel;
+  }
+  return signal;
+}
+
+function gaussianRandom() {
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+function computePolarityCoherence(signal) {
+  const n = signal.length;
+  const envelope = new Float64Array(n);
+  for (let i = 0; i < n; i++) envelope[i] = Math.abs(signal[i]);
+
+  let mean = 0;
+  for (let i = 0; i < n; i++) mean += envelope[i];
+  mean /= n;
+
+  let variance = 0;
+  for (let i = 0; i < n; i++) variance += (envelope[i] - mean) ** 2;
+  variance /= n;
+  const std = Math.sqrt(variance) + 1e-8;
+
+  let skewSum = 0;
+  for (let i = 0; i < n; i++) skewSum += ((envelope[i] - mean) / std) ** 3;
+  const skew = skewSum / n;
+  const polarity = Math.tanh(skew);
+
+  const bins = 64;
+  const power = new Float64Array(bins);
+  for (let k = 0; k < bins; k++) {
+    let re = 0, im = 0;
+    const freq = k * 5;
+    for (let i = 0; i < n; i += 8) {
+      const angle = 2 * Math.PI * freq * i / n;
+      re += signal[i] * Math.cos(angle);
+      im -= signal[i] * Math.sin(angle);
+    }
+    power[k] = re * re + im * im;
+  }
+  let totalPower = 0;
+  for (let k = 0; k < bins; k++) totalPower += power[k];
+  let entropy = 0;
+  for (let k = 0; k < bins; k++) {
+    if (power[k] > 0) {
+      const p = power[k] / (totalPower + 1e-12);
+      entropy -= p * Math.log(p);
+    }
+  }
+  const maxEntropy = Math.log(bins);
+  const coherence = 1 - (entropy / maxEntropy);
+
+  let rms = 0;
+  for (let i = 0; i < n; i++) rms += signal[i] * signal[i];
+  rms = Math.sqrt(rms / n);
+
+  return { polarity, coherence, vecMag: rms };
+}
+
+function diagnosticForward(polarity, coherence, vecMag) {
+  const x = [polarity, coherence, vecMag];
+  const { W1, b1, W2, b2, classes } = DIAGNOSTIC_WEIGHTS;
+
+  const hidden = new Array(b1.length).fill(0);
+  for (let j = 0; j < b1.length; j++) {
+    let sum = b1[j];
+    for (let i = 0; i < x.length; i++) sum += x[i] * W1[i][j];
+    hidden[j] = Math.tanh(sum);
+  }
+
+  const logits = new Array(b2.length).fill(0);
+  for (let k = 0; k < b2.length; k++) {
+    let sum = b2[k];
+    for (let j = 0; j < hidden.length; j++) sum += hidden[j] * W2[j][k];
+    logits[k] = sum;
+  }
+
+  const maxLogit = Math.max(...logits);
+  const exps = logits.map(v => Math.exp(v - maxLogit));
+  const sumExp = exps.reduce((a, b) => a + b, 0);
+  const probs = exps.map(v => v / sumExp);
+
+  let bestIdx = 0;
+  for (let i = 1; i < probs.length; i++) if (probs[i] > probs[bestIdx]) bestIdx = i;
+
+  return { label: classes[bestIdx], confidence: probs[bestIdx], coherence };
+}
+
+function runRealDiagnostic() {
+  const zone = zones.find(z => z.id === cur) || zones[0];
+  const condition = zone.condition || "stable";
+  const signal = simulateVibrationSignal(condition);
+  const { polarity, coherence, vecMag } = computePolarityCoherence(signal);
+  const result = diagnosticForward(polarity, coherence, vecMag);
+
+  const fieldValue = Math.round(coherence * 100);
+  const zoneColor = zone.color;
+
+  document.getElementById('fFill').style.width = fieldValue + '%';
+  document.getElementById('fNum').textContent = fieldValue + '%';
+  document.getElementById('fNum').style.color = zoneColor;
+  document.getElementById('field-label').style.color = zoneColor;
+  document.getElementById('diagValue').textContent =
+    result.label + ' (' + (result.confidence * 100).toFixed(0) + '% confidence) — live PICT-ITD inference';
+}
+
+/* ════════════════════════════════════════
+   INIT
+   ════════════════════════════════════════ */
+const sc = document.getElementById('stars');
+for(let i=0;i<70;i++) {
+  const s = document.createElement('div');
+  s.className = 'star';
+  s.style.left = Math.random()*100 + '%';
+  s.style.top = Math.random()*100 + '%';
+  const size = Math.random()*2+1;
+  s.style.width = size + 'px';
+  s.style.height = size + 'px';
+  s.style.animationDelay = (Math.random()*3) + 's';
+  sc.appendChild(s);
+}
+
+renderZoneList();
+renderMap();
+updateStatus();
+logMission('Auto-scan initiated');
+runRealDiagnostic();
+setInterval(runRealDiagnostic, 5000);
+setInterval(autoScanTick, 10000);
+</script>
+</body>
+</html>
