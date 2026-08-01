@@ -1,8 +1,6 @@
 # Emporium Citadel 
 # Emporium Command — Genesis
 
-*"In the beginning, there was oblivion. Then, there was depth. Then, poof — a moment spawned."*
-
 Emporium Command: Genesis is a single-file, browser-based sci-fi command dashboard built entirely in HTML, CSS, and vanilla JavaScript. No frameworks. No dependencies. No build step. Just open the file and step into the role of the Founder.
 
 ## What Is This?
